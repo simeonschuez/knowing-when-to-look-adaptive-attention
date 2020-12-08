@@ -199,7 +199,7 @@ def reg_collate_fn(data):
 
 
 def get_caption_loader(
-        loader_type, decoding_level, list_IDs,
+        decoding_level, split,
         data_df, image_dir, vocab,
         transform, batch_size, shuffle,
         num_workers, drop_last=False
@@ -209,7 +209,7 @@ def get_caption_loader(
     # initialize dataset
 
     dataset = COCOCaptionDataset(
-        list_IDs=list_IDs, data_df=data_df, image_dir=image_dir,
+        split=split, data_df=data_df, image_dir=image_dir,
         vocab=vocab, transform=transform, decoding_level=decoding_level
         )
 
@@ -227,7 +227,7 @@ def get_caption_loader(
 
 
 def get_reg_loader(
-        loader_type, decoding_level, list_IDs,
+        decoding_level, split,
         data_df, image_dir, vocab,
         transform, batch_size, shuffle,
         num_workers, drop_last=False
@@ -237,7 +237,7 @@ def get_reg_loader(
     # initialize dataset
 
     dataset = RefCOCODataset(
-        list_IDs=list_IDs, data_df=data_df, image_dir=image_dir,
+        split=split, data_df=data_df, image_dir=image_dir,
         vocab=vocab, transform=transform, decoding_level=decoding_level
         )
 
