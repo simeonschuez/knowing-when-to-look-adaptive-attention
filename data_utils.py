@@ -96,7 +96,7 @@ def split_sentences(df):
                 'ann_id': row['ann_id'],
                 'caption': i['sent'],
                 'ref_id': row['ref_id'],
-                'refcoco_split': row['split'],
+                'split': row['split'],
                 'coco_split': coco_split(row)
             })
 
@@ -133,13 +133,13 @@ def refcoco_splits(path):
     captions = get_refcoco_captions(path)
 
     # partitions: ['train', 'testB', 'testA', 'val']
-    partitions = list(pd.unique(captions.refcoco_split))
+    partitions = list(pd.unique(captions.split))
 
     image_ids, caption_ids = {}, {}
 
     for part in partitions:
-        image_ids[part] = list(captions.loc[captions.refcoco_split == part].image_id.unique())
-        caption_ids[part] = captions.loc[captions.refcoco_split == part].index.to_list()
+        image_ids[part] = list(captions.loc[captions.split == part].image_id.unique())
+        caption_ids[part] = captions.loc[captions.split == part].index.to_list()
 
     ids = {'image_ids': image_ids, 'caption_ids': caption_ids}
 
@@ -155,8 +155,3 @@ def filename_from_id(image_id, prefix='', file_ending='.jpg'):
     filename = prefix + padded_ids + file_ending
 
     return (filename)
-
-
-# -----------------------
-# Vocabulary
-
