@@ -164,6 +164,8 @@ def captions_collate_fn(data):
 
     # merge captions (from tuple of 1D tensor to 2D tensor)
     lengths = [len(cap) for cap in captions]
+    lengths = torch.LongTensor(lengths).unsqueeze(1)
+    
     # create empty tensor and fill in caption ints
     targets = torch.zeros(len(captions), max(lengths)).long()
     for i, cap in enumerate(captions):
@@ -180,8 +182,12 @@ def reg_collate_fn(data):
     # same stuff as in captions_collate_fn
     data.sort(key=lambda x: len(x[1]), reverse=True)
     images, captions, pos_features, _ = zip(*data)
+    
     images = torch.stack(images, 0)
+    
     lengths = [len(cap) for cap in captions]
+    lengths = torch.LongTensor(lengths).unsqueeze(1)
+    
     targets = torch.zeros(len(captions), max(lengths)).long()
     for i, cap in enumerate(captions):
         end = lengths[i]
