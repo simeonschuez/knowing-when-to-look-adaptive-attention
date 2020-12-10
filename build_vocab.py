@@ -1,20 +1,10 @@
 import nltk
 import pickle
 from collections import Counter
-import configparser
 import string
 import os
-import sys
 
-utils_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(utils_path)
-import data_utils
-
-nltk.download('punkt')
-
-config = configparser.ConfigParser()
-config.read(os.path.join(utils_path, 'config.ini'))
-
+from data_utils import get_karpathy_split, get_refcoco_captions
 
 class Vocabulary(object):
     """Simple vocabulary wrapper."""
@@ -39,89 +29,66 @@ class Vocabulary(object):
         return len(self.word2idx)
 
 
-def build_word_vocab(df, threshold):
+def build_vocab(caption_list, threshold):
     """Build a simple vocabulary wrapper."""
-    counter = Counter()
-    ids = df.index
-    for i, id in enumerate(ids):
-        caption = str(df.loc[id]['caption'])
-        tokens = nltk.tokenize.word_tokenize(caption.lower())
-        counter.update(tokens)
 
-        if (i+1) % 1000 == 0:
-            print("[{}/{}] Tokenized the captions.".format(i+1, len(ids)))
-
-    # discard word if word frequency is less than threshold
-    words = [word for word, cnt in counter.items() if cnt >= threshold]
-
-    # Create a vocab wrapper and add some special tokens.
     vocab = Vocabulary()
+
     vocab.add_word('<pad>')
     vocab.add_word('<start>')
     vocab.add_word('<end>')
-    vocab.add_word('<unk>')
+    vocab.add_word(vocab.unknown_token)
 
-    # Add the words to the vocabulary.
-    for i, word in enumerate(words):
-        vocab.add_word(word)
+    tokens = []
+    for c in caption_list:
+        c = c.casefold()
+        c = c.translate(str.maketrans('', '', string.punctuation))
+        tokens += nltk.word_tokenize(c)
+
+    counter = Counter(tokens)
+
+    words = [w for w, cnt in counter.items() if cnt >= threshold]
+
+    for w in words:
+        vocab.add_word(w)
+
     return vocab
 
 
-def char_vocab():
-    """ set up vocabulary wrapper for character level decoding """
-    vocab = Vocabulary()
-    # add start, stop and padding tokens
-    vocab.add_word('^')
-    vocab.add_word('$')
-    vocab.add_word('&')
-    vocab.unknown_token = '&'
-
-    # add digits and lowercase letters
-    for char in ' ' + string.digits + string.ascii_lowercase:
-        vocab.add_word(char)
-    return vocab
-
-
-def main(threshold):
-
-    vocab_path = os.path.join(os.path.dirname(utils_path), 'data', 'vocab')
-    refcoco_path = config['REFCOCO']['data-path']
-    coco_path = config['MSCOCO']['data-path']
+def main(coco_threshold, refcoco_threshold, splits_path, caps_path, refcoco_path, out_dir):
 
     # create vocab directory if it doesn't exist
-    if not os.path.isdir(vocab_path):
-        print('create vocab directory: {}'.format(vocab_path))
-        os.makedirs(vocab_path)
+    if not os.path.isdir(out_dir):
+        print('create vocab directory: {}'.format(out_dir))
+        os.makedirs(out_dir)
 
-    # COCO Captions
-    out_path = os.path.join(vocab_path, 'coco_vocab.pkl')
-    # retrieve caption df
-    captions = preprocess_data.get_coco_captions(coco_path)
-    # build vocab
-    vocab = build_word_vocab(df=captions, threshold=threshold)
-    # save vocab to file
+    print('generate vocab for coco captions')
+
+    caps_df = get_karpathy_split(splits_path=splits_path, caps_path=caps_path)
+    train_caps = caps_df.loc[caps_df.split == 'train'].caption.to_list()
+    vocab = build_vocab(train_caps, coco_threshold)
+    out_path = os.path.join(out_dir, 'coco_vocab.pkl')
     with open(out_path, 'wb') as f:
         pickle.dump(vocab, f)
-    print("COCO Captions:")
-    print("Total vocabulary size: {}".format(len(vocab)))
-    print("Saved the vocabulary wrapper to '{}'".format(out_path))
+        print('saved vocab with size {} to {}.'.format(len(vocab), out_path))
 
-    # RefCOCO Referring Expressions
-    out_path = os.path.join(vocab_path, 'refcoco_vocab.pkl')
-    # retrieve caption df
-    captions = preprocess_data.get_refcoco_captions(refcoco_path)
-    # build vocab
-    vocab = build_word_vocab(df=captions, threshold=threshold)
-    # save vocab to file
+    print('generate vocab for refcoco')
+    reg_df = get_refcoco_captions(refcoco_path)
+    train_caps = reg_df.loc[reg_df.split == 'train'].caption.to_list()
+    vocab = build_vocab(train_caps, refcoco_threshold)
+    out_path = os.path.join(out_dir, 'refcoco_vocab.pkl')
     with open(out_path, 'wb') as f:
         pickle.dump(vocab, f)
-    print("RefCOCO:")
-    print("Total vocabulary size: {}".format(len(vocab)))
-    print("Saved the vocabulary wrapper to '{}'".format(out_path))
+        print('saved vocab with size {} to {}.'.format(len(vocab), out_path))
 
 
 if __name__ == '__main__':
 
     main(
-        threshold=4
+        coco_threshold=5,
+        refcoco_threshold=3,
+        splits_path='/home/vu48pok/.data/compling/data/corpora/external/MSCOCO/COCO/splits/karpathy/caption_datasets/',
+        caps_path='/home/vu48pok/.data/compling/data/corpora/external/MSCOCO/COCO/',
+        refcoco_path='/home/vu48pok/.data/compling/data/corpora/external/COCO_ReferIt/licheng/refcoco/',
+        out_dir='/home/vu48pok/Dokumente/Projekte/reg/knowing-when-to-look-adaptive-attention/data/'
     )
